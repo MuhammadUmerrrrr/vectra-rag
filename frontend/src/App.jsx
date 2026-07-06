@@ -129,10 +129,10 @@ export default function App() {
         <span className="rounded-full border border-line px-2 py-0.5 text-[10px] text-slate-500">BRUTE FORCE</span>
         <span
           className={`rounded-full border px-2 py-0.5 text-[10px] ${
-            status?.ollamaAvailable ? 'border-sport/40 text-sport' : 'border-rose-500/40 text-rose-400'
+            status?.aiAvailable ? 'border-sport/40 text-sport' : 'border-rose-500/40 text-rose-400'
           }`}
         >
-          {status ? (status.ollamaAvailable ? 'OLLAMA ✓' : 'OLLAMA ✗') : 'OLLAMA…'}
+          {status ? (status.aiAvailable ? 'AI STATUS ✓' : 'AI STATUS ✗') : 'AI STATUS…'}
         </span>
         <span className="ml-auto text-[11px] text-slate-500">{items.length} vectors · 16 dims</span>
       </header>

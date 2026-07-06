@@ -13,7 +13,7 @@ export default function DocumentsTab({ status, docs, onInsert, onDelete }) {
       return
     }
     setBusy(true)
-    setMsg('Calling Ollama nomic-embed-text…')
+    setMsg('Calling Hugging Face Embeddings…')
     try {
       const res = await onInsert(title, text)
       if (res.error) {
@@ -31,28 +31,25 @@ export default function DocumentsTab({ status, docs, onInsert, onDelete }) {
   return (
     <div className="flex flex-col gap-5 overflow-y-auto p-5">
       <section>
-        <Label>Ollama status</Label>
-        <div className={`card flex items-start gap-2 ${status?.ollamaAvailable ? 'border-sport/30' : 'border-rose-500/30'}`}>
-          {status?.ollamaAvailable ? (
+        <Label>AI Status</Label>
+        <div className={`card flex items-start gap-2 ${status?.aiAvailable ? 'border-sport/30' : 'border-rose-500/30'}`}>
+          {status?.aiAvailable ? (
             <CheckCircle2 size={16} className="mt-0.5 shrink-0 text-sport" />
           ) : (
             <XCircle size={16} className="mt-0.5 shrink-0 text-rose-400" />
           )}
           <div className="text-[11px] leading-relaxed text-slate-400">
-            {status?.ollamaAvailable ? (
+            {status?.aiAvailable ? (
               <>
-                <div className="text-sport">Online</div>
-                Embed: <span className="text-brand">{status.embedModel}</span><br />
-                Generate: <span className="text-brand">{status.genModel}</span><br />
+                <div className="text-sport">Connected</div>
+                Embed: <span className="text-brand">Hugging Face Embeddings</span><br />
+                Generate: <span className="text-brand">Groq Llama 3</span><br />
                 Documents: <span className="text-slate-200">{status.docCount}</span>
               </>
             ) : (
               <>
-                <div className="text-rose-400">Offline</div>
-                Install from ollama.com, then:<br />
-                <code className="mono">ollama pull nomic-embed-text</code><br />
-                <code className="mono">ollama pull llama3.2</code><br />
-                <code className="mono">ollama serve</code>
+                <div className="text-rose-400">Disconnected</div>
+                Please set GROQ_API_KEY and HF_API_KEY environment variables.
               </>
             )}
           </div>
@@ -65,7 +62,7 @@ export default function DocumentsTab({ status, docs, onInsert, onDelete }) {
         <textarea
           value={text}
           onChange={(e) => setText(e.target.value)}
-          placeholder="Paste your notes, textbook excerpt, lecture content…&#10;Long text is automatically split into overlapping chunks and embedded with Ollama's nomic-embed-text model."
+          placeholder="Paste your notes, textbook excerpt, lecture content…&#10;Long text is automatically split into overlapping chunks and embedded with Hugging Face Embeddings."
           rows={6}
           className="input mt-2 resize-y"
         />

@@ -14,7 +14,7 @@ Endpoints mirror the original demo 1:1 so the frontend contract stays stable:
     DELETE /delete/{id}         remove a demo vector
     GET  /benchmark              compare bruteforce vs kdtree vs hnsw timing
     GET  /hnsw-info              graph layer/edge stats for visualization
-    GET  /status                  Ollama availability + doc count
+    GET  /status                  AI status + doc count
     POST /doc/insert              chunk + embed + store a document (real embeddings)
     GET  /doc/list                 list stored documents
     DELETE /doc/delete/{id}       remove a document chunk
@@ -46,7 +46,7 @@ app.add_middleware(
 
 db = VectorDB(DIMS)
 load_demo(db)
-ollama = OllamaClient()
+ai_client = OllamaClient()
 
 # --------------------------------------------------------------------------- #
 # Demo text -> 16D embedding (same keyword-bucket trick as the original demo:
@@ -167,7 +167,7 @@ def stats():
 
 
 # --------------------------------------------------------------------------- #
-# Document + RAG (real embeddings, via Ollama)
+# Document + RAG (real embeddings, via Groq + HF)
 # --------------------------------------------------------------------------- #
 class DocItem:
     __slots__ = ("id", "title", "text", "embedding")
@@ -234,11 +234,11 @@ def chunk_text(text: str, chunk_words: int = 250, overlap_words: int = 30) -> li
 
 @app.get("/status")
 def status():
-    up = ollama.is_available()
+    up = ai_client.is_available()
     return {
-        "ollamaAvailable": up,
-        "embedModel": ollama.embed_model,
-        "genModel": ollama.gen_model,
+        "aiAvailable": up,
+        "embedModel": ai_client.embed_model,
+        "genModel": ai_client.gen_model,
         "docCount": len(doc_db.store),
         "docDims": doc_db.dims,
         "demoDims": DIMS,
@@ -254,11 +254,10 @@ def doc_insert(body: DocInsertBody):
     chunks = chunk_text(body.text)
     ids = []
     for i, chunk in enumerate(chunks):
-        emb = ollama.embed(chunk)
+        emb = ai_client.embed(chunk)
         if emb is None:
             return {
-                "error": "Ollama unavailable. Install from https://ollama.com then run: "
-                         "ollama pull nomic-embed-text && ollama pull llama3.2"
+                "error": "Embedding service unavailable."
             }
         title = f"{body.title} [{i + 1}/{len(chunks)}]" if len(chunks) > 1 else body.title
         ids.append(doc_db.insert(title, chunk, emb))
@@ -282,9 +281,9 @@ def doc_list():
 
 @app.post("/doc/search")
 def doc_search(body: DocSearchBody):
-    q_emb = ollama.embed(body.question)
+    q_emb = ai_client.embed(body.question)
     if q_emb is None:
-        return {"error": "Ollama unavailable"}
+        return {"error": "Embedding service unavailable."}
     hits = doc_db.search(q_emb, body.k)
     return {"contexts": [{"id": d.id, "title": d.title, "distance": dist} for dist, d in hits]}
 
@@ -300,18 +299,20 @@ RAG_SYSTEM_PROMPT = (
 
 @app.post("/doc/ask")
 def doc_ask(body: DocAskBody):
-    q_emb = ollama.embed(body.question)
+    q_emb = ai_client.embed(body.question)
     if q_emb is None:
-        return {"error": "Ollama unavailable"}
+        return {"error": "Embedding service unavailable."}
 
     hits = doc_db.search(q_emb, body.k)
     ctx_block = "\n\n".join(f"[{i + 1}] {d.title}:\n{d.text}" for i, (_, d) in enumerate(hits))
     prompt = f"{RAG_SYSTEM_PROMPT}\n\nContext:\n{ctx_block}\n\nQuestion: {body.question}\n\nAnswer:"
 
-    answer = ollama.generate(prompt)
+    answer = ai_client.generate(prompt)
+    if answer.startswith("ERROR:"):
+        return {"error": "Groq API unavailable."}
     return {
         "answer": answer,
-        "model": ollama.gen_model,
+        "model": ai_client.gen_model,
         "contexts": [{"id": d.id, "title": d.title, "text": d.text, "distance": dist} for dist, d in hits],
         "docCount": len(doc_db.store),
     }
