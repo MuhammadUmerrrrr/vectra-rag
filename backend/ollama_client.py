@@ -34,23 +34,31 @@ class OllamaClient:
 
     def embed(self, text: str) -> list[float] | None:
         headers = {"Authorization": f"Bearer {self.hf_key}"} if self.hf_key else {}
+        model = "sentence-transformers/all-MiniLM-L6-v2"
+        url = f"https://api-inference.huggingface.co/models/{model}"
         try:
-            # Using HuggingFace free inference API for embeddings
-            model = "sentence-transformers/all-MiniLM-L6-v2"
             r = requests.post(
-                f"https://api-inference.huggingface.co/pipeline/feature-extraction/{model}",
+                url,
                 headers=headers,
                 json={"inputs": text, "options": {"wait_for_model": True}},
                 timeout=30,
             )
-            if r.status_code == 200:
-                res = r.json()
-                if isinstance(res, list) and len(res) > 0:
-                    # In some cases HF returns a nested list
-                    return res[0] if isinstance(res[0], list) else res
-            return None
-        except Exception:
-            return None
+            # Log status code and response body
+            print(f"HF Embeddings Status Code: {r.status_code}")
+            print(f"HF Embeddings Response: {r.text}")
+            
+            if r.status_code != 200:
+                raise Exception(f"Hugging Face API returned status code {r.status_code}. Response: {r.text}")
+            
+            res = r.json()
+            if isinstance(res, list) and len(res) > 0:
+                # In some cases HF returns a nested list
+                return res[0] if isinstance(res[0], list) else res
+            
+            raise Exception(f"Unexpected response format from Hugging Face: {res}")
+        except Exception as e:
+            print(f"Error calling Hugging Face embeddings: {str(e)}")
+            raise e
 
     def generate(self, prompt: str) -> str:
         if not self.client:
